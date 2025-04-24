@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pokémon Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4">
+      <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">Pokémon Explorer</h1>
+      
+      <!-- Search and Filter Section -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <!-- Search Form -->
+        <div class="mb-6">
+          <form id="search-form" class="flex items-center gap-2">
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Search Pokémon by name..."
+              class="flex-1 border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="submit"
+              class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Type Filter -->
+          <div>
+            <h3 class="font-medium mb-2">Type</h3>
+            <div id="type-filters" class="flex flex-wrap gap-2">
+              <!-- Types will be added by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Generation Filter -->
+          <div>
+            <h3 class="font-medium mb-2">Generation</h3>
+            <select id="generation-filter" class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">All Generations</option>
+              <option value="1">Generation I (1-151)</option>
+              <option value="2">Generation II (152-251)</option>
+              <option value="3">Generation III (252-386)</option>
+              <option value="4">Generation IV (387-493)</option>
+              <option value="5">Generation V (494-649)</option>
+              <option value="6">Generation VI (650-721)</option>
+              <option value="7">Generation VII (722-809)</option>
+              <option value="8">Generation VIII (810-898)</option>
+            </select>
+          </div>
+
+          <!-- Stat Range Filter -->
+          <div>
+            <h3 class="font-medium mb-2">Base Stats</h3>
+            <div class="space-y-4">
+              <div>
+                <label for="hp-filter" class="block text-sm text-gray-600 mb-1">HP: <span id="hp-value">0-255</span></label>
+                <div class="flex items-center gap-2">
+                  <input type="range" id="hp-filter-min" min="0" max="255" value="0" class="w-full">
+                  <input type="range" id="hp-filter-max" min="0" max="255" value="255" class="w-full">
+                </div>
+              </div>
+              <div>
+                <label for="attack-filter" class="block text-sm text-gray-600 mb-1">Attack: <span id="attack-value">0-255</span></label>
+                <div class="flex items-center gap-2">
+                  <input type="range" id="attack-filter-min" min="0" max="255" value="0" class="w-full">
+                  <input type="range" id="attack-filter-max" min="0" max="255" value="255" class="w-full">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Filters -->
+        <div id="active-filters" class="mt-4 flex flex-wrap gap-2">
+          <!-- Active filters will appear here -->
+        </div>
+      </div>
+
+      <!-- Pokemon List Container -->
+      <div id="pokemon-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"></div>
+
+      <!-- Pagination Controls -->
+      <div class="flex justify-center items-center gap-4 mb-8">
+        <button id="prev-btn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition disabled:opacity-50" disabled>
+          Previous
+        </button>
+        <span id="page-info" class="font-medium">Page 1 of 64</span>
+        <button id="next-btn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition">
+          Next
+        </button>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="loading" class="text-center hidden">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+        <p>Loading Pokémon...</p>
+      </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="pokemon-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+      <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center p-4 border-b">
+          <h2 id="modal-title" class="text-2xl font-bold capitalize">Pokemon Name</h2>
+          <button id="close-modal" class="text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <div id="modal-content" class="p-6">
+          <!-- Content will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // DOM Elements
+      const pokemonList = document.getElementById('pokemon-list');
+      const searchForm = document.getElementById('search-form');
+      const searchInput = document.getElementById('search-input');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const pageInfo = document.getElementById('page-info');
+      const loading = document.getElementById('loading');
+      const pokemonModal = document.getElementById('pokemon-modal');
+      const modalTitle = document.getElementById('modal-title');
+      const modalContent = document.getElementById('modal-content');
+      const closeModal = document.getElementById('close-modal');
+      const typeFilters = document.getElementById('type-filters');
+      const generationFilter = document.getElementById('generation-filter');
+      const activeFilters = document.getElementById('active-filters');
+      
+      // Stat filter elements
+      const hpFilterMin = document.getElementById('hp-filter-min');
+      const hpFilterMax = document.getElementById('hp-filter-max');
+      const attackFilterMin = document.getElementById('attack-filter-min');
+      const attackFilterMax = document.getElementById('attack-filter-max');
+      const hpValue = document.getElementById('hp-value');
+      const attackValue = document.getElementById('attack-value');
+
+      // App State
+      let currentPage = 1;
+      let totalPages = 64;
+      let allPokemon = [];
+      let filteredPokemon = [];
+      let pokemonDetailsCache = {};
+      let activeTypeFilters = [];
+      let activeStatFilters = {
+        hp: { min: 0, max: 255 },
+        attack: { min: 0, max: 255 }
+      };
+      let activeGenerationFilter = 'all';
+
+      // Pokémon types with colors
+      const pokemonTypes = [
+        'normal', 'fire', 'water', 'electric', 'grass', 'ice',
+        'fighting', 'poison', 'ground', 'flying', 'psychic',
+        'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
+      ];
+
+      // Initialize the app
+      async function init() {
+        showLoading();
+        await setupTypeFilters();
+        await fetchAllPokemon();
+        setupStatFilterEvents();
+        hideLoading();
+        applyFilters();
+      }
+
+      // Set up type filter buttons
+      async function setupTypeFilters() {
+        typeFilters.innerHTML = '';
+        
+        // Add "All" option
+        const allButton = document.createElement('button');
+        allButton.className = 'px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 capitalize';
+        allButton.textContent = 'All';
+        allButton.addEventListener('click', () => {
+          activeTypeFilters = [];
+          updateActiveFiltersDisplay();
+          applyFilters();
+        });
+        typeFilters.appendChild(allButton);
+        
+        // Add buttons for each type
+        pokemonTypes.forEach(type => {
+          const button = document.createElement('button');
+          button.className = `px-3 py-1 rounded-full text-sm font-medium bg-${getTypeColor(type)}-100 text-${getTypeColor(type)}-800 capitalize`;
+          button.textContent = type;
+          button.addEventListener('click', () => {
+            if (activeTypeFilters.includes(type)) {
+              activeTypeFilters = activeTypeFilters.filter(t => t !== type);
+            } else {
+              activeTypeFilters.push(type);
+            }
+            updateActiveFiltersDisplay();
+            applyFilters();
+          });
+          typeFilters.appendChild(button);
+        });
+      }
+
+      // Set up stat filter event listeners
+      function setupStatFilterEvents() {
+        // HP Filter
+        hpFilterMin.addEventListener('input', () => {
+          activeStatFilters.hp.min = parseInt(hpFilterMin.value);
+          updateStatValueDisplay();
+          applyFilters();
+        });
+        
+        hpFilterMax.addEventListener('input', () => {
+          activeStatFilters.hp.max = parseInt(hpFilterMax.value);
+          updateStatValueDisplay();
+          applyFilters();
+        });
+        
+        // Attack Filter
+        attackFilterMin.addEventListener('input', () => {
+          activeStatFilters.attack.min = parseInt(attackFilterMin.value);
+          updateStatValueDisplay();
+          applyFilters();
+        });
+        
+        attackFilterMax.addEventListener('input', () => {
+          activeStatFilters.attack.max = parseInt(attackFilterMax.value);
+          updateStatValueDisplay();
+          applyFilters();
+        });
+        
+        // Generation Filter
+        generationFilter.addEventListener('change', () => {
+          activeGenerationFilter = generationFilter.value;
+          updateActiveFiltersDisplay();
+          applyFilters();
+        });
+      }
+
+      // Update the displayed stat range values
+      function updateStatValueDisplay() {
+        hpValue.textContent = `${activeStatFilters.hp.min}-${activeStatFilters.hp.max}`;
+        attackValue.textContent = `${activeStatFilters.attack.min}-${activeStatFilters.attack.max}`;
+      }
+
+      // Update the active filters display
+      function updateActiveFiltersDisplay() {
+        activeFilters.innerHTML = '';
+        
+        // Type filters
+        if (activeTypeFilters.length > 0) {
+          const typeFilterPill = document.createElement('span');
+          typeFilterPill.className = 'px-3 py-1 bg-gray-200 rounded-full text-sm flex items-center gap-1';
+          typeFilterPill.innerHTML = `
+            <span>Types: ${activeTypeFilters.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}</span>
+            <button class="text-gray-500 hover:text-gray-700" onclick="clearTypeFilters()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          `;
+          activeFilters.appendChild(typeFilterPill);
+        }
+        
+        // Generation filter
+        if (activeGenerationFilter !== 'all') {
+          const genText = generationFilter.options[generationFilter.selectedIndex].text.split(' ')[0];
+          const genFilterPill = document.createElement('span');
+          genFilterPill.className = 'px-3 py-1 bg-gray-200 rounded-full text-sm flex items-center gap-1';
+          genFilterPill.innerHTML = `
+            <span>${genText}</span>
+            <button class="text-gray-500 hover:text-gray-700" onclick="clearGenerationFilter()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          `;
+          activeFilters.appendChild(genFilterPill);
+        }
+        
+        // Stat filters
+        if (activeStatFilters.hp.min > 0 || activeStatFilters.hp.max < 255) {
+          const hpFilterPill = document.createElement('span');
+          hpFilterPill.className = 'px-3 py-1 bg-gray-200 rounded-full text-sm flex items-center gap-1';
+          hpFilterPill.innerHTML = `
+            <span>HP: ${activeStatFilters.hp.min}-${activeStatFilters.hp.max}</span>
+            <button class="text-gray-500 hover:text-gray-700" onclick="clearStatFilter('hp')">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          `;
+          activeFilters.appendChild(hpFilterPill);
+        }
+        
+        if (activeStatFilters.attack.min > 0 || activeStatFilters.attack.max < 255) {
+          const attackFilterPill = document.createElement('span');
+          attackFilterPill.className = 'px-3 py-1 bg-gray-200 rounded-full text-sm flex items-center gap-1';
+          attackFilterPill.innerHTML = `
+            <span>Attack: ${activeStatFilters.attack.min}-${activeStatFilters.attack.max}</span>
+            <button class="text-gray-500 hover:text-gray-700" onclick="clearStatFilter('attack')">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          `;
+          activeFilters.appendChild(attackFilterPill);
+        }
+      }
+
+      // Clear all type filters
+      function clearTypeFilters() {
+        activeTypeFilters = [];
+        updateActiveFiltersDisplay();
+        applyFilters();
+      }
+
+      // Clear generation filter
+      function clearGenerationFilter() {
+        generationFilter.value = 'all';
+        activeGenerationFilter = 'all';
+        updateActiveFiltersDisplay();
+        applyFilters();
+      }
+
+      // Clear a specific stat filter
+      function clearStatFilter(stat) {
+        if (stat === 'hp') {
+          hpFilterMin.value = 0;
+          hpFilterMax.value = 255;
+          activeStatFilters.hp = { min: 0, max: 255 };
+        } else if (stat === 'attack') {
+          attackFilterMin.value = 0;
+          attackFilterMax.value = 255;
+          activeStatFilters.attack = { min: 0, max: 255 };
+        }
+        updateStatValueDisplay();
+        updateActiveFiltersDisplay();
+        applyFilters();
+      }
+
+      // Fetch all Pokémon names and URLs
+      async function fetchAllPokemon() {
+        try {
+          const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=898');
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          allPokemon = data.results.map((pokemon, index) => ({
+            ...pokemon,
+            id: index + 1
+          }));
+          filteredPokemon = [...allPokemon];
+        } catch (error) {
+          console.error("Failed to fetch Pokémon list:", error);
+          pokemonList.innerHTML = `
+            <div class="col-span-full text-center text-red-500 font-bold">
+              Failed to fetch Pokémon data. Please try again later.
+            </div>
+          `;
+        }
+      }
+
+      // Apply all active filters
+      function applyFilters() {
+        showLoading();
+        
+        // Apply search filter
+        const searchTerm = searchInput.value.toLowerCase();
+        let results = [...allPokemon];
+        
+        if (searchTerm !== '') {
+          results = results.filter(pokemon => 
+            pokemon.name.toLowerCase().includes(searchTerm)
+          );
+        }
+        
+        // Apply generation filter
+        if (activeGenerationFilter !== 'all') {
+          const genRanges = {
+            '1': { min: 1, max: 151 },
+            '2': { min: 152, max: 251 },
+            '3': { min: 252, max: 386 },
+            '4': { min: 387, max: 493 },
+            '5': { min: 494, max: 649 },
+            '6': { min: 650, max: 721 },
+            '7': { min: 722, max: 809 },
+            '8': { min: 810, max: 898 }
+          };
+          const range = genRanges[activeGenerationFilter];
+          results = results.filter(pokemon => 
+            pokemon.id >= range.min && pokemon.id <= range.max
+          );
+        }
+        
+        // Apply type filters (if any)
+        if (activeTypeFilters.length > 0) {
+          results = results.filter(pokemon => {
+            // We'll filter by type after we have the details
+            return true;
+          });
+        }
+        
+        // Apply stat filters
+        if (activeStatFilters.hp.min > 0 || activeStatFilters.hp.max < 255 ||
+            activeStatFilters.attack.min > 0 || activeStatFilters.attack.max < 255) {
+          results = results.filter(pokemon => {
+            // We'll filter by stats after we have the details
+            return true;
+          });
+        }
+        
+        filteredPokemon = results;
+        currentPage = 1;
+        
+        // Now render the list (which will apply type and stat filters after fetching details)
+        renderPokemonList();
+        updatePagination();
+      }
+
+      // Fetch details for a specific Pokémon
+      async function fetchPokemonDetails(url) {
+        // Check cache first
+        if (pokemonDetailsCache[url]) {
+          return pokemonDetailsCache[url];
+        }
+        
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const data = await response.json();
+          pokemonDetailsCache[url] = data;
+          return data;
+        } catch (error) {
+          console.error("Failed to fetch Pokémon details:", error);
+          return null;
+        }
+      }
+
+      // Render the Pokémon list based on current page and filter
+      async function renderPokemonList() {
+        pokemonList.innerHTML = '';
+        
+        const itemsPerPage = 12;
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pokemonToDisplay = filteredPokemon.slice(startIndex, endIndex);
+
+        // Create a card for each Pokémon
+        let displayedCount = 0;
+        for (const pokemon of pokemonToDisplay) {
+          const details = await fetchPokemonDetails(pokemon.url);
+          if (!details) continue;
+          
+          // Apply type filters if any
+          if (activeTypeFilters.length > 0) {
+            const pokemonTypes = details.types.map(t => t.type.name);
+            const hasMatchingType = activeTypeFilters.some(type => 
+              pokemonTypes.includes(type)
+            );
+            if (!hasMatchingType) continue;
+          }
+          
+          // Apply stat filters if any
+          const hpStat = details.stats.find(s => s.stat.name === 'hp').base_stat;
+          const attackStat = details.stats.find(s => s.stat.name === 'attack').base_stat;
+          
+          if (hpStat < activeStatFilters.hp.min || hpStat > activeStatFilters.hp.max ||
+              attackStat < activeStatFilters.attack.min || attackStat > activeStatFilters.attack.max) {
+            continue;
+          }
+          
+          displayedCount++;
+          
+          const card = document.createElement('div');
+          card.className = 'bg-white shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition cursor-pointer';
+          card.innerHTML = `
+            <div class="p-4">
+              <img 
+                src="${details.sprites.other['official-artwork'].front_default || details.sprites.front_default}" 
+                alt="${pokemon.name}" 
+                class="w-full h-40 object-contain mx-auto"
+                loading="lazy"
+              >
+              <div class="flex justify-between items-start mt-2">
+                <h3 class="text-xl font-bold capitalize">${pokemon.name}</h3>
+                <span class="text-gray-500">#${details.id.toString().padStart(3, '0')}</span>
+              </div>
+              <div class="flex justify-center gap-2 mt-2">
+                ${details.types.map(type => `
+                  <span class="px-2 py-1 rounded-full text-xs font-medium bg-${getTypeColor(type.type.name)}-100 text-${getTypeColor(type.type.name)}-800">
+                    ${type.type.name}
+                  </span>
+                `).join('')}
+              </div>
+              <div class="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <div class="text-center">
+                  <p class="text-gray-500">HP</p>
+                  <p>${hpStat}</p>
+                </div>
+                <div class="text-center">
+                  <p class="text-gray-500">Attack</p>
+                  <p>${attackStat}</p>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          // Add click event to show details
+          card.addEventListener('click', () => showPokemonDetails(details));
+          pokemonList.appendChild(card);
+        }
+        
+        // Show message if no Pokémon match filters
+        if (displayedCount === 0) {
+          pokemonList.innerHTML = `
+            <div class="col-span-full text-center text-gray-500 py-8">
+              No Pokémon match your filters. Try adjusting your criteria.
+            </div>
+          `;
+        }
+        
+        hideLoading();
+      }
+
+      // Show detailed Pokémon information in modal
+      async function showPokemonDetails(pokemon) {
+        showLoading();
+        modalTitle.textContent = pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1);
+        
+        // Fetch species data for flavor text
+        let speciesData = null;
+        try {
+          const response = await fetch(pokemon.species.url);
+          if (response.ok) {
+            speciesData = await response.json();
+          }
+        } catch (error) {
+          console.error("Failed to fetch species data:", error);
+        }
+        
+        // Get English flavor text
+        let flavorText = "No description available";
+        if (speciesData) {
+          const englishEntry = speciesData.flavor_text_entries.find(entry => entry.language.name === 'en');
+          if (englishEntry) {
+            flavorText = englishEntry.flavor_text.replace(/\f/g, ' ');
+          }
+        }
+        
+        // Get evolution chain if available
+        let evolutionChain = null;
+        if (speciesData && speciesData.evolution_chain) {
+          try {
+            const response = await fetch(speciesData.evolution_chain.url);
+            if (response.ok) {
+              evolutionChain = await response.json();
+            }
+          } catch (error) {
+            console.error("Failed to fetch evolution chain:", error);
+          }
+        }
+        
+        // Get base stats
+        const stats = pokemon.stats.map(stat => ({
+          name: stat.stat.name.replace('-', ' '),
+          value: stat.base_stat
+        }));
+        
+        // Render modal content
+        modalContent.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div class="bg-gray-100 p-4 rounded-lg">
+                <img 
+                  src="${pokemon.sprites.other['official-artwork'].front_default || pokemon.sprites.front_default}" 
+                  alt="${pokemon.name}" 
+                  class="w-full h-48 object-contain mx-auto"
+                >
+                <div class="flex justify-center gap-2 mt-2">
+                  ${pokemon.sprites.front_shiny ? `
+                    <img src="${pokemon.sprites.front_shiny}" alt="Shiny ${pokemon.name}" class="w-16 h-16">
+                  ` : ''}
+                </div>
+              </div>
+              
+              <div class="mt-4">
+                <h3 class="text-lg font-semibold mb-2">Details</h3>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <p class="text-gray-500">Height</p>
+                    <p>${pokemon.height / 10}m</p>
+                  </div>
+                  <div>
+                    <p class="text-gray-500">Weight</p>
+                    <p>${pokemon.weight / 10}kg</p>
+                  </div>
+                  <div>
+                    <p class="text-gray-500">Base Experience</p>
+                    <p>${pokemon.base_experience || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p class="text-gray-500">Order</p>
+                    <p>${pokemon.order}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mt-4">
+                <h3 class="text-lg font-semibold mb-2">Abilities</h3>
+                <div class="flex flex-wrap gap-2">
+                  ${pokemon.abilities.map(ability => `
+                    <span class="px-3 py-1 bg-gray-200 rounded-full text-sm capitalize">
+                      ${ability.ability.name.replace('-', ' ')}
+                      ${ability.is_hidden ? '<span class="text-xs text-gray-500">(hidden)</span>' : ''}
+                    </span>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <div class="mb-4">
+                <h3 class="text-lg font-semibold mb-2">Description</h3>
+                <p class="text-gray-700">${flavorText}</p>
+              </div>
+              
+              <div class="mb-4">
+                <h3 class="text-lg font-semibold mb-2">Type</h3>
+                <div class="flex gap-2">
+                  ${pokemon.types.map(type => `
+                    <span class="px-3 py-1 rounded-full text-sm font-medium bg-${getTypeColor(type.type.name)}-100 text-${getTypeColor(type.type.name)}-800 capitalize">
+                      ${type.type.name}
+                    </span>
+                  `).join('')}
+                </div>
+              </div>
+              
+              <div class="mb-4">
+                <h3 class="text-lg font-semibold mb-2">Stats</h3>
+                <div class="space-y-2">
+                  ${stats.map(stat => `
+                    <div>
+                      <div class="flex justify-between mb-1">
+                        <span class="capitalize">${stat.name}</span>
+                        <span>${stat.value}</span>
+                      </div>
+                      <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-${getStatColor(stat.value)}-500 h-2 rounded-full" style="width: ${Math.min(100, stat.value)}%"></div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              
+              ${evolutionChain ? `
+                <div>
+                  <h3 class="text-lg font-semibold mb-2">Evolution Chain</h3>
+                  <div class="flex items-center justify-center gap-4">
+                    ${renderEvolutionChain(evolutionChain.chain)}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+        
+        pokemonModal.classList.remove('hidden');
+        hideLoading();
+      }
+
+      // Render evolution chain
+      function renderEvolutionChain(chain) {
+        let html = '';
+        let currentChain = chain;
+        
+        while (currentChain) {
+          const pokemonId = currentChain.species.url.split('/').slice(-2, -1)[0];
+          const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+          
+          html += `
+            <div class="flex flex-col items-center">
+              <img src="${spriteUrl}" alt="${currentChain.species.name}" class="w-16 h-16">
+              <span class="text-sm capitalize mt-1">${currentChain.species.name}</span>
+            </div>
+          `;
+          
+          if (currentChain.evolves_to.length > 0) {
+            html += '<div class="text-gray-400">→</div>';
+            currentChain = currentChain.evolves_to[0];
+          } else {
+            currentChain = null;
+          }
+        }
+        
+        return html;
+      }
+
+      // Get Tailwind color class for Pokémon types
+      function getTypeColor(type) {
+        const typeColors = {
+          normal: 'gray',
+          fire: 'red',
+          water: 'blue',
+          electric: 'yellow',
+          grass: 'green',
+          ice: 'cyan',
+          fighting: 'orange',
+          poison: 'purple',
+          ground: 'amber',
+          flying: 'indigo',
+          psychic: 'pink',
+          bug: 'lime',
+          rock: 'stone',
+          ghost: 'violet',
+          dragon: 'fuchsia',
+          dark: 'neutral',
+          steel: 'slate',
+          fairy: 'rose'
+        };
+        return typeColors[type] || 'gray';
+      }
+
+      // Get color for stats based on value
+      function getStatColor(value) {
+        if (value >= 90) return 'green';
+        if (value >= 70) return 'blue';
+        if (value >= 50) return 'yellow';
+        return 'red';
+      }
+
+      // Update pagination controls
+      function updatePagination() {
+        totalPages = Math.ceil(filteredPokemon.length / 12);
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+      }
+
+      // Filter Pokémon based on search input
+      function filterPokemon() {
+        const searchTerm = searchInput.value.toLowerCase();
+        if (searchTerm === '') {
+          filteredPokemon = [...allPokemon];
+        } else {
+          filteredPokemon = allPokemon.filter(pokemon => 
+            pokemon.name.toLowerCase().includes(searchTerm)
+          );
+        }
+        currentPage = 1;
+        applyFilters();
+      }
+
+      // Show loading indicator
+      function showLoading() {
+        loading.classList.remove('hidden');
+      }
+
+      // Hide loading indicator
+      function hideLoading() {
+        loading.classList.add('hidden');
+      }
+
+      // Event Listeners
+      searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        filterPokemon();
+      });
+
+      searchInput.addEventListener('input', () => {
+        // Add a slight delay to avoid too many requests while typing
+        clearTimeout(searchInput.timer);
+        searchInput.timer = setTimeout(filterPokemon, 300);
+      });
+
+      prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPokemonList();
+          updatePagination();
+        }
+      });
+
+      nextBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderPokemonList();
+          updatePagination();
+        }
+      });
+
+      closeModal.addEventListener('click', () => {
+        pokemonModal.classList.add('hidden');
+      });
+
+      // Close modal when clicking outside
+      pokemonModal.addEventListener('click', (e) => {
+        if (e.target === pokemonModal) {
+          pokemonModal.classList.add('hidden');
+        }
+      });
+
+      // Initialize the app
+      init();
+    </script>
+  </body>
+</html>
