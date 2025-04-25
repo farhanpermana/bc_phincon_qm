@@ -1,0 +1,20 @@
+{
+  "name": "bc_phincon_qm",
+  "version": "1.0.0",
+  "main": "asyncts.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build" : "npx tsc && node dist/async.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farhanpermana/bc_phincon_qm.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/farhanpermana/bc_phincon_qm/issues"
+  },
+  "homepage": "https://github.com/farhanpermana/bc_phincon_qm#readme",
+  "description": ""
+}
