@@ -1,4 +1,3 @@
-// src/controllers/todoController.ts
 import { Request, Response } from 'express';
 import Todo from '../models/todo.model';
 import { TodoInput } from '../types/todo.type';
@@ -84,5 +83,3 @@ export const deleteTodo = (req: Request, res: Response): Promise<any> => {
       res.status(500).json({ error: 'Failed to delete todo' });
     });
 };
-
-

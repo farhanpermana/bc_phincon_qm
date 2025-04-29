@@ -1,17 +1,16 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import multer from 'multer';
+import { upload } from '../middlewares/upload.middleware';
 import { Product } from '../models/product.model';
 import { Op } from 'sequelize';
 
 const router = express.Router();
-const upload = multer({ dest: 'uploads/' });
 
 // CREATE PRODUCT
 router.post('/', upload.single('image'), async (req: Request, res: Response) => {
   try {
     const { name, description, price, category } = req.body;
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+    const image_url = req.file ? `/uploads/${req.file.filename}` : undefined;
 
     await Product.create({ name, description, price, category, image_url });
 
@@ -93,6 +92,7 @@ router.put('/:id', upload.single('image'), async (req: Request, res: Response) =
     console.error(err);
     res.status(500).json({ error: 'Failed to update product' });
   }
+
 });
 
 // DELETE PRODUCT

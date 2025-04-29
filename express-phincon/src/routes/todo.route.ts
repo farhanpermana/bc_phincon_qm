@@ -1,4 +1,3 @@
-// src/routes/todoRoutes.ts
 import { Router } from 'express';
 import {
   getAllTodos,

@@ -1,4 +1,3 @@
-// src/models/todo.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import { todoSequelize } from '../config/database';
 
