@@ -1,9 +1,9 @@
-// filepath: /Users/phincon/Documents/dev/bc_phincon_qm/express-phincon/src/app.ts
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import todoRoutes from './routes/todo.route';
 import { connectTodoDB } from './config/database';
+import productRoutes from './routes/product.route';
 
 dotenv.config();
 
@@ -16,6 +16,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/todos', todoRoutes);
+app.use('/api/products', productRoutes);
+app.use('/uploads', express.static('uploads')); // Serve uploaded images
 
 // Health check endpoint
 app.get('/health', (req, res) => {
