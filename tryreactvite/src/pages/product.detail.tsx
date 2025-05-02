@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { formatIDR } from '../utils/helpers';
 
+interface Category {
+  id: number;
+  name: string;
+}
+
 interface Product {
   id: number;
   name: string;
   description: string;
   price: number;
-  category: string;
+  category_id: number;
+  category?: Category; // Optional nested category object
   image_url: string;
 }
 
@@ -26,7 +32,7 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`${API_URL}/products/${id}`);
+        const res = await fetch(`${API_URL}/products/${id}?include=category`);
         if (!res.ok) throw new Error('Product not found');
         const data = await res.json();
         setProduct(data);
@@ -139,10 +145,17 @@ const ProductDetail = () => {
 
           {/* Product Details */}
           <div className="md:w-1/2 p-6 md:p-8">
+            {/* Updated Category Display */}
             <div className="mb-2">
-              <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
-                {product.category}
-              </span>
+              {product.category ? (
+                <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
+                  {product.category.name}
+                </span>
+              ) : (
+                <span className="inline-block px-3 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full">
+                  Uncategorized
+                </span>
+              )}
             </div>
             
             <h1 className="text-3xl font-bold text-gray-800 mb-2">{product.name}</h1>

@@ -24,7 +24,25 @@ const ProductForm = () => {
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [displayPrice, setDisplayPrice] = useState("");
+  const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
 
+  // Fetch categories from API
+  useEffect(() => {
+    fetch(`${API_URL}/categories`)
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch categories");
+        return res.json();
+      })
+      .then(data => {
+        setCategories(data);
+      })
+      .catch(err => {
+        console.error("Failed to load categories:", err);
+        setError("Failed to load categories. Please try again.");
+      });
+  }, []);
+
+  // Fetch product data if in edit mode
   useEffect(() => {
     if (isEdit) {
       setLoading(true);
@@ -38,17 +56,24 @@ const ProductForm = () => {
             name: data.name || "",
             description: data.description || "",
             price: String(data.price ?? ""),
-            category: data.category || "",
+            // Ensure we're setting the category_id, not the category object
+            category: String(data.category_id) || "",
             image: null,
           });
-          
+
           // Format the initial price for display
-          setDisplayPrice(formatIDR(Number(data.price) || 0).replace("Rp", "").trim());
-          
+          setDisplayPrice(
+            formatIDR(Number(data.price) || 0)
+              .replace("Rp", "")
+              .trim()
+          );
+
           if (data.image_url) {
-            setCurrentImage(`${import.meta.env.VITE_STATIC_URL}${data.image_url}`);
+            setCurrentImage(
+              `${import.meta.env.VITE_STATIC_URL}${data.image_url}`
+            );
           }
-          
+
           setLoading(false);
         })
         .catch((err) => {
@@ -65,15 +90,18 @@ const ProductForm = () => {
     >
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, "");
     const numericValue = rawValue === "" ? "0" : rawValue;
-    
-    setFormData(prev => ({ ...prev, price: numericValue }));
-    
+
+    setFormData((prev) => ({ ...prev, price: numericValue }));
+
     // Format for display (remove currency symbol for cleaner input)
     const formatted = formatIDR(Number(numericValue)).replace("Rp", "").trim();
     setDisplayPrice(formatted);
@@ -106,12 +134,19 @@ const ProductForm = () => {
     setIsSubmitting(true);
     setError(null);
 
+    // Validate category exists
+    if (!formData.category) {
+      setError("Please select a category");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const data = new FormData();
       data.append("name", formData.name);
       data.append("description", formData.description);
       data.append("price", formData.price);
-      data.append("category", formData.category);
+      data.append("category_id", formData.category); // No need for toString() as formData is already string
       if (formData.image) {
         data.append("image", formData.image);
       }
@@ -123,7 +158,7 @@ const ProductForm = () => {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.message || "Failed to save product");
+        throw new Error(errorData?.error || errorData?.message || "Failed to save product");
       }
 
       navigate("/products");
@@ -133,6 +168,7 @@ const ProductForm = () => {
       } else {
         setError("An unknown error occurred");
       }
+      console.error("Form submission error:", err);
       setIsSubmitting(false);
     }
   };
@@ -166,8 +202,6 @@ const ProductForm = () => {
       </div>
     );
   }
-
-  const categories = ["Electronics", "Clothing", "Home", "Books", "Other"];
 
   return (
     <div className="max-w-3xl mx-auto p-6">
@@ -279,7 +313,7 @@ const ProductForm = () => {
                   name="price"
                   min="0"
                   step="1"
-                  type="text" // Changed from number to text
+                  type="text"
                   value={displayPrice}
                   onChange={handlePriceChange}
                   placeholder="0"
@@ -300,24 +334,21 @@ const ProductForm = () => {
                 name="category"
                 value={formData.category}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
                 required
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
               >
-                <option value="" disabled>
-                  Select a category
-                </option>
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                <option value="" disabled>Select a category</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
                   </option>
                 ))}
-                {formData.category &&
-                  !categories.includes(formData.category) && (
-                    <option value={formData.category}>
-                      {formData.category}
-                    </option>
-                  )}
               </select>
+              {categories.length === 0 && (
+                <p className="text-yellow-600 text-sm mt-1">
+                  No categories available. Please create categories first.
+                </p>
+              )}
             </div>
           </div>
 
